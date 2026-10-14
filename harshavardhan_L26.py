@@ -1,84 +1,184 @@
+Here is your code converted into a Streamlit Python application for mechanical workshop shaft diameter insp
 
-# Fluid Mechanics Calculator
+Save the code as `shaft_inspection.py`.
 
-# Function to calculate Pressure
-def pressure(rho, g, h):
-    return rho * g * h
+python
+```
 
+import streamlit as st
+import pandas as pd
 
-# Function to calculate Fluid Velocity
-def velocity(Q, A):
-    return Q / A
+# Page configuration
+st.set_page_config(
+    page_title="Shaft Diameter Inspection",
+    page_icon="⚙️",
+    layout="wide"
+)
 
+# Title
+st.title("⚙️ Mechanical Workshop - Shaft Diameter Inspection")
+st.write("Inspect shaft diameters against the nominal diameter and tolerance limit.")
 
-# Function to calculate Discharge
-def discharge(A, V):
-    return A * V
+# Input measurements
+diameters = [50.02, 49.97, 50.08, 49.95, 50.01, 50.06]
 
+# Nominal diameter and tolerance
+nominal_diameter = 50.0
+tolerance = 0.05
 
-# Function to calculate Reynolds Number
-def reynolds_number(rho, V, D, mu):
-    return (rho * V * D) / mu
+# Sidebar
+st.sidebar.header("Inspection Settings")
+nominal_diameter = st.sidebar.number_input(
+    "Nominal Diameter (mm)",
+    value=50.0,
+    step=0.01,
+    format="%.2f"
+)
+tolerance = st.sidebar.number_input(
+    "Tolerance (± mm)",
+    value=0.05,
+    min_value=0.0,
+    step=0.01,
+    format="%.2f"
+)
 
+# Calculate results using Python built-in functions
+number_of_shafts = len(diameters)
+total_diameter = sum(diameters)
+maximum = max(diameters)
+minimum = min(diameters)
+sorted_diameters = sorted(diameters)
 
-# Function to calculate Dynamic Pressure
-def dynamic_pressure(rho, V):
-    return 0.5 * rho * V ** 2
+deviations = list(
+    map(lambda d: round(d - nominal_diameter, 2), diameters)
+)
 
+out_of_tolerance = list(
+    filter(
+        lambda x: abs(x[1]) > tolerance,
+        zip(range(1, len(diameters) + 1), deviations)
+    )
+)
 
-# Main Menu
-while True:
-    print("\n===== FLUID MECHANICS CALCULATOR =====")
-    print("1. Pressure")
-    print("2. Fluid Velocity")
-    print("3. Discharge")
-    print("4. Reynolds Number")
-    print("5. Dynamic Pressure")
-    print("6. Exit")
+shaft_diameter_pairs = list(
+    zip(range(1, len(diameters) + 1), diameters)
+)
 
-    choice = int(input("Enter your choice: "))
+# Summary metrics
+st.subheader("Inspection Summary")
 
-    if choice == 1:
-        rho = float(input("Enter fluid density (kg/m^3): "))
-        g = float(input("Enter gravitational acceleration (m/s^2): "))
-        h = float(input("Enter height/depth (m): "))
+col1, col2, col3, col4 = st.columns(4)
 
-        P = pressure(rho, g, h)
-        print("Pressure =", P, "Pa")
+col1.metric("Shafts Inspected", number_of_shafts)
+col2.metric("Average Diameter", f"{total_diameter / number_of_shafts:.3f} mm")
+col3.metric("Maximum Diameter", f"{maximum:.2f} mm")
+col4.metric("Minimum Diameter", f"{minimum:.2f} mm")
 
-    elif choice == 2:
-        Q = float(input("Enter discharge (m^3/s): "))
-        A = float(input("Enter cross-sectional area (m^2): "))
+st.divider()
 
-        V = velocity(Q, A)
-        print("Fluid Velocity =", V, "m/s")
+# Detailed inspection table
+st.subheader("Shaft Measurement Results")
 
-    elif choice == 3:
-        A = float(input("Enter cross-sectional area (m^2): "))
-        V = float(input("Enter fluid velocity (m/s): "))
+data = {
+    "Shaft Number": range(1, number_of_shafts + 1),
+    "Measured Diameter (mm)": diameters,
+    "Nominal Diameter (mm)": [nominal_diameter] * number_of_shafts,
+    "Deviation (mm)": deviations,
+    "Status": [
+        "OUT OF TOLERANCE"
+        if abs(d) > tolerance
+        else "PASS"
+        for d in deviations
+    ]
+}
 
-        Q = discharge(A, V)
-        print("Discharge =", Q, "m^3/s")
+df = pd.DataFrame(data)
 
-    elif choice == 4:
-        rho = float(input("Enter fluid density (kg/m^3): "))
-        V = float(input("Enter fluid velocity (m/s): "))
-        D = float(input("Enter pipe diameter (m): "))
-        mu = float(input("Enter dynamic viscosity (Pa.s): "))
+st.dataframe(
+    df.style.map(
+        lambda value: (
+            "color: red; font-weight: bold"
+            if value == "OUT OF TOLERANCE"
+            else "color: green; font-weight: bold"
+            if value == "PASS"
+            else ""
+        ),
+        subset=["Status"]
+    ),
+    use_container_width=True,
+    hide_index=True
+)
 
-        Re = reynolds_number(rho, V, D, mu)
-        print("Reynolds Number =", Re)
+# Tolerance results
+st.subheader("Tolerance Inspection")
 
-    elif choice == 5:
-        rho = float(input("Enter fluid density (kg/m^3): "))
-        V = float(input("Enter fluid velocity (m/s): "))
+if out_of_tolerance:
+    st.error(f"{len(out_of_tolerance)} shaft(s) are outside the tolerance limit.")
+    for shaft, deviation in out_of_tolerance:
+        st.write(f"Shaft {shaft}: Deviation = {deviation:+.2f} mm")
+else:
+    st.success("All shafts are within the specified tolerance.")
 
-        Pd = dynamic_pressure(rho, V)
-        print("Dynamic Pressure =", Pd, "Pa")
+# Diameter chart
+st.subheader("Diameter Comparison")
 
-    elif choice == 6:
-        print("Thank you!")
-        break
+chart_df = pd.DataFrame({
+    "Shaft": [f"Shaft {i}" for i in range(1, number_of_shafts + 1)],
+    "Measured Diameter": diameters,
+    "Nominal Diameter": [nominal_diameter] * number_of_shafts
+}).set_index("Shaft")
 
-    else:
-        print("Invalid choice! Please enter a number from 1 to 6.")
+st.line_chart(chart_df)
+
+# Additional Python function results
+with st.expander("View Python Function Results"):
+    st.write("**Total diameter:**", f"{total_diameter:.2f} mm")
+    st.write("**Sorted diameters:**", sorted_diameters)
+    st.write("**Data type:**", str(type(diameters)))
+    st.write("**Shaft number and diameter pairs:**", shaft_diameter_pairs)
+    st.write("**Deviations:**", deviations)
+    st.write("**Out-of-tolerance shafts:**", out_of_tolerance)
+
+# Download report
+csv = df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="Download Inspection Report (CSV)",
+    data=csv,
+    file_name="shaft_inspection_report.csv",
+    mime="text/csv"
+)
+
+st.caption("Mechanical Workshop | Shaft Quality Inspection")
+```
+
+## How to run the application
+
+1. Install Python if it is not already installed.
+2. Install the required packages in your terminal:
+
+bash
+```
+pip install streamlit pandas
+```
+
+3. Save the code as `shaft_inspection.py`.
+4. Run the application:
+
+bash
+```
+streamlit run shaft_inspection.py
+```
+
+5. Streamlit will open the dashboard in your browser.
+
+## Features included
+
+- Interactive nominal diameter and tolerance settings.
+- Summary metrics for the six shafts.
+- Measurement and deviation table with pass/fail status.
+- Diameter comparison chart.
+- Results demonstrating Python built-in functions.
+- CSV download for the inspection report.
+
+Note: The six measured diameters are currently fixed in the code. The nominal diameter and tolerance are adjustable from the sidebar. The application treats deviations exactly equal to the tolerance limit as acceptable.
